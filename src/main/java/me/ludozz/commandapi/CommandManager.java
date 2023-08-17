@@ -28,7 +28,7 @@ public final class CommandManager {
     private static Logger logger = null;
     private static CommandManager commandManager = null;
     private final CommandManagerPlugin commandManagerPlugin;
-    private final boolean experimental;
+    private boolean experimental;
     private static final String version = Bukkit.getServer().getClass().getName().split("\\.")[3];
     private final List<Command> commands = new ArrayList<>();
     private final SimpleCommandMap commandMap;
@@ -43,18 +43,23 @@ public final class CommandManager {
     private static final Method syncCommandsMethod;
 
     static {
+        Method syncCommands = null;
         try {
-            syncCommandsMethod = ReflectionUtils.getMethod(Bukkit.getServer().getClass(), "syncCommands");
+            syncCommands = ReflectionUtils.getMethod(Bukkit.getServer().getClass(), "syncCommands");
         } catch (ReflectiveOperationException ex) {
-            throw new RuntimeException("Could not load required classes or methods", ex);
+            //throw new RuntimeException("Could not load required classes or methods", ex);
         }
+        syncCommandsMethod = syncCommands;
     }
 
 
     CommandManager(CommandManagerPlugin commandManagerPlugin) {
         this.commandManagerPlugin = commandManagerPlugin;
-        this.experimental = commandManagerPlugin.getConfig().getBoolean("experimental", false);
         logger = commandManagerPlugin.getLogger();
+        this.experimental = commandManagerPlugin.getConfig().getBoolean("experimental", false);
+        if (experimental) {
+            logger.info(" \n \nEnabled experimental features!!!\n ");
+        }
         this.commandMap = getCommandMap();
         this.knownCommands = getKnownCommands();
         this.override = knownCommands instanceof CommandManagerMap;
@@ -65,7 +70,10 @@ public final class CommandManager {
             try {
                 Class.forName("com.mojang.brigadier.CommandDispatcher");
                 commandBrigadier = new CommandBrigadier();
-            } catch (ClassNotFoundException ignored) {
+            } catch (Throwable ex) {
+                ex.printStackTrace();
+                experimental = false;
+                logger.warning(" \n \nDisabling experimental features due to an error loading them!\n ");
             }
         }
         try {
@@ -149,15 +157,14 @@ public final class CommandManager {
     private synchronized boolean registerCommand0(@NotNull Plugin plugin, @NotNull Command command) {
         try {
             boolean result;
-            final String uuid = UUID.randomUUID().toString();
-            result = commandMap.register(uuid, command);
+            result = commandMap.register(plugin.getName(), command);
             if (command instanceof SpigotCommand) {
                 ((SpigotCommand) command).setPlugin(plugin);
             }
             if (mayRegisterCommand(command, command.getName())) knownCommands.put(command.getName(), command);
-            knownCommands.remove(uuid + ":" + command.getName());
+            knownCommands.remove(plugin.getName() + ":" + command.getName());
             for (String alias : command.getAliases()) {
-                knownCommands.remove(uuid + ":" + alias);
+                knownCommands.remove(plugin.getName() + ":" + alias);
                 if (mayRegisterCommand(command, alias)) knownCommands.put(alias.toLowerCase(Locale.ENGLISH).trim(), command);
             }
             commands.add(command);
@@ -250,6 +257,7 @@ public final class CommandManager {
     }
 
     public void syncCommands() {
+        if (syncCommandsMethod == null) return;
         try {
             syncCommandsMethod.invoke(Bukkit.getServer());
         } catch (ReflectiveOperationException ex) {

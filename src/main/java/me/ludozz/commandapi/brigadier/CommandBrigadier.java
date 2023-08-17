@@ -1,9 +1,11 @@
 package me.ludozz.commandapi.brigadier;
 
-import me.ludozz.reflectionutils.nms.NmsUtils;
-
 
 public final class CommandBrigadier {
+
+    static {
+        ArgumentRegistry.init();
+    }
 
 
     /*private static final String version = NmsUtils.getBukkitVersion();

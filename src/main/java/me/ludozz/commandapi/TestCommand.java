@@ -1,7 +1,6 @@
 package me.ludozz.commandapi;
 
 import me.ludozz.commandapi.brigadier.IntegerArgument;
-import me.ludozz.commandapi.exceptions.CommandSyntaxException;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 
@@ -9,7 +8,9 @@ public class TestCommand extends SpigotCommand implements Executable {
 
     public TestCommand() {
         super("test");
+        registerExecutable(this);
         IntegerArgument integerArgument = new IntegerArgument("meeps", 1, 500);
+        integerArgument.registerExecutable(this);
         addArguments(integerArgument);
     }
 

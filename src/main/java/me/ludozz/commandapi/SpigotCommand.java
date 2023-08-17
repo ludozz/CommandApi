@@ -375,15 +375,20 @@ public class SpigotCommand extends Command implements PluginIdentifiableCommand 
     public final @NotNull Command setAliases(@NotNull List<String> aliases) {
         if (isRegistered()) throw new IllegalStateException("command is registered");
         this.aliases.clear();
-        this.aliases.addAll(aliases);
+        for (String alias : new ArrayList<>(aliases)) {
+            if (alias == null) continue;
+            if (alias.equalsIgnoreCase(getName())) {
+                CommandManager.getLogger().warning("Tried to set alias '" + alias
+                        + "', but equals the main command! Plugin: " + getPlugin().getName());
+                continue;
+            }
+            this.aliases.add(alias.trim().toLowerCase(Locale.ENGLISH));
+        }
         return this;
     }
 
-    public final @NotNull Command setAliases(@NotNull String... aliases) {
-        if (isRegistered()) throw new IllegalStateException("command is registered");
-        this.aliases.clear();
-        this.aliases.addAll(Arrays.asList(aliases));
-        return this;
+    public final void setAliases(@NotNull String... aliases) {
+        setAliases(Arrays.asList(aliases));
     }
 
     @Override
@@ -432,28 +437,6 @@ public class SpigotCommand extends Command implements PluginIdentifiableCommand 
         return new ArrayList<>(arguments);
     }
 
-    /*public final void registerSubCommand(@NotNull SubCommand subCommand) {
-        if (isRegistered()) throw new IllegalStateException("command is registered");
-        subCommands.put(subCommand.getName(), subCommand);
-        addArguments(subCommands.values());
-        for (String alias : subCommand.getAliases()) {
-            subCommands.put(alias, subCommand);
-        }
-        subCommand.register(this);
-    }
-
-    @Nullable
-    public final SubCommand getSubCommand(@NotNull String alias) {
-        return subCommands.get(alias);
-    }
-
-    public final List<SubCommand> getSubCommands() {
-        return new ArrayList<>(new HashSet<>(subCommands.values()));
-    }
-
-    public final List<String> getSubCommandsString() {
-        return new ArrayList<>(subCommands.keySet());
-    }*/
 
     @Deprecated
     @Override
@@ -523,6 +506,9 @@ public class SpigotCommand extends Command implements PluginIdentifiableCommand 
 
     @Override
     public final boolean register(@NotNull CommandMap commandMap) {
+        if (this instanceof Executable && !isExecutable()) {
+            registerExecutable((Executable) this);
+        }
         for (Permission permission : permissions) {
             permission.setDefault(permissionDefault);
             if (permission instanceof SpigotPermission) {

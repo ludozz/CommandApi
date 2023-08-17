@@ -25,6 +25,8 @@ public final class ArgumentTypeImp<T> implements ArgumentType<T> {
 
     public ArgumentTypeImp(Argument<T> argument) {
         this.argument = argument;
+        ArgumentRegistry.registerArgumentType(this,
+                CommandManager.getInstance().getPlugin(), argument.getName());
     }
 
     @Override
